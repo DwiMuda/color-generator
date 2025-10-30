@@ -9,6 +9,7 @@ let originalHTML = null;
 let colorData = [];
 let history = [];
 let currentTheme = 'dark';
+let projectFiles = {}; // Store all files from folder
 
 // Enhanced Color Palettes
 const palettes = {
@@ -22,6 +23,23 @@ const palettes = {
   midnight: ['#191970', '#000080', '#00008B', '#0000CD', '#4169E1']
 };
 
+// File/Folder Selection
+function selectFile() {
+  fileInput.removeAttribute('webkitdirectory');
+  fileInput.removeAttribute('directory');
+  fileInput.removeAttribute('multiple');
+  fileInput.setAttribute('accept', '.html');
+  fileInput.click();
+}
+
+function selectFolder() {
+  fileInput.setAttribute('webkitdirectory', '');
+  fileInput.setAttribute('directory', '');
+  fileInput.setAttribute('multiple', '');
+  fileInput.removeAttribute('accept');
+  fileInput.click();
+}
+
 // Drag & Drop
 uploadArea.addEventListener('dragover', (e) => {
   e.preventDefault();
@@ -32,9 +50,29 @@ uploadArea.addEventListener('dragleave', () => {
   uploadArea.classList.remove('dragover');
 });
 
-uploadArea.addEventListener('drop', (e) => {
+uploadArea.addEventListener('drop', async (e) => {
   e.preventDefault();
   uploadArea.classList.remove('dragover');
+  const items = e.dataTransfer.items;
+  
+  if (items) {
+    // Handle folder drop
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].webkitGetAsEntry();
+      if (item) {
+        if (item.isDirectory) {
+          await readDirectory(item);
+          return;
+        } else if (item.isFile && item.name.endsWith('.html')) {
+          const file = items[i].getAsFile();
+          if (file) handleFile(file);
+          return;
+        }
+      }
+    }
+  }
+  
+  // Fallback to files
   const file = e.dataTransfer.files[0];
   if (file && file.name.endsWith('.html')) {
     handleFile(file);
@@ -42,28 +80,197 @@ uploadArea.addEventListener('drop', (e) => {
 });
 
 fileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) handleFile(file);
+  const files = e.target.files;
+  if (files.length === 0) return;
+  
+  // If multiple files (folder selected)
+  if (files.length > 1) {
+    handleFolder(files);
+  } else {
+    // Single file
+    const file = files[0];
+    if (file) handleFile(file);
+  }
 });
 
 function handleFile(file) {
   const reader = new FileReader();
   reader.onload = (event) => {
     originalHTML = event.target.result;
-    const parser = new DOMParser();
-    currentDoc = parser.parseFromString(originalHTML, "text/html");
-    
-    analyzeColors();
-    updatePreview();
-    
-    document.getElementById('statsSection').style.display = 'block';
-    document.getElementById('controlsPanel').style.display = 'block';
-    document.getElementById('actionsPanel').style.display = 'block';
-    
-    generatePalettes();
-    saveToHistory('File Loaded');
+    processHTML(originalHTML);
   };
   reader.readAsText(file);
+}
+
+// Handle folder with multiple files
+async function handleFolder(files) {
+  projectFiles = {};
+  let htmlFile = null;
+  
+  // Read all files
+  const filePromises = Array.from(files).map(file => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      const path = file.webkitRelativePath || file.name;
+      
+      reader.onload = (e) => {
+        projectFiles[path] = e.target.result;
+        
+        // Find main HTML file (prioritize index.html)
+        if (file.name === 'index.html') {
+          htmlFile = { name: file.name, path: path, content: e.target.result };
+        } else if (file.name.endsWith('.html') && !htmlFile) {
+          htmlFile = { name: file.name, path: path, content: e.target.result };
+        }
+        
+        resolve();
+      };
+      
+      reader.readAsText(file);
+    });
+  });
+  
+  await Promise.all(filePromises);
+  
+  if (htmlFile) {
+    // Process HTML and merge external files
+    await processHTMLWithExternalFiles(htmlFile.content, htmlFile.path);
+  } else {
+    alert('❌ No HTML file found in folder!');
+  }
+}
+
+// Process HTML and inline external CSS/JS
+async function processHTMLWithExternalFiles(htmlContent, htmlPath) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, "text/html");
+  
+  // Get base directory
+  const baseDir = htmlPath.substring(0, htmlPath.lastIndexOf('/') + 1);
+  
+  // Inline CSS files
+  const linkTags = doc.querySelectorAll('link[rel="stylesheet"]');
+  for (let link of linkTags) {
+    const href = link.getAttribute('href');
+    if (href && !href.startsWith('http') && !href.startsWith('//')) {
+      const cssPath = resolvePath(baseDir, href);
+      const cssContent = projectFiles[cssPath];
+      
+      if (cssContent) {
+        const styleTag = doc.createElement('style');
+        styleTag.textContent = cssContent;
+        link.parentNode.replaceChild(styleTag, link);
+        console.log(`✅ Inlined CSS: ${cssPath}`);
+      }
+    }
+  }
+  
+  // Inline JS files
+  const scriptTags = doc.querySelectorAll('script[src]');
+  for (let script of scriptTags) {
+    const src = script.getAttribute('src');
+    if (src && !src.startsWith('http') && !src.startsWith('//')) {
+      const jsPath = resolvePath(baseDir, src);
+      const jsContent = projectFiles[jsPath];
+      
+      if (jsContent) {
+        const newScript = doc.createElement('script');
+        newScript.textContent = jsContent;
+        script.parentNode.replaceChild(newScript, script);
+        console.log(`✅ Inlined JS: ${jsPath}`);
+      }
+    }
+  }
+  
+  originalHTML = doc.documentElement.outerHTML;
+  processHTML(originalHTML);
+}
+
+// Resolve relative paths
+function resolvePath(basePath, relativePath) {
+  // Remove leading ./
+  relativePath = relativePath.replace(/^\.\//, '');
+  
+  // Handle ../
+  let base = basePath.split('/').filter(p => p);
+  let relative = relativePath.split('/');
+  
+  for (let part of relative) {
+    if (part === '..') {
+      base.pop();
+    } else if (part !== '.') {
+      base.push(part);
+    }
+  }
+  
+  return base.join('/');
+}
+
+// Process HTML after reading
+function processHTML(htmlContent) {
+  const parser = new DOMParser();
+  currentDoc = parser.parseFromString(htmlContent, "text/html");
+  
+  analyzeColors();
+  updatePreview();
+  
+  document.getElementById('statsSection').style.display = 'block';
+  document.getElementById('controlsPanel').style.display = 'block';
+  document.getElementById('actionsPanel').style.display = 'block';
+  
+  generatePalettes();
+  saveToHistory('File Loaded');
+}
+
+// Read directory recursively (for drag & drop)
+async function readDirectory(directoryEntry) {
+  projectFiles = {};
+  const allEntries = [];
+  
+  async function readAllEntries(entry, path = '') {
+    if (entry.isFile) {
+      allEntries.push({ entry, path: path + entry.name });
+    } else if (entry.isDirectory) {
+      const dirReader = entry.createReader();
+      const entries = await new Promise((resolve) => {
+        dirReader.readEntries(resolve);
+      });
+      
+      for (let subEntry of entries) {
+        await readAllEntries(subEntry, path + entry.name + '/');
+      }
+    }
+  }
+  
+  await readAllEntries(directoryEntry);
+  
+  // Read all files
+  const filePromises = allEntries.map(({ entry, path }) => {
+    return new Promise((resolve) => {
+      entry.file(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          projectFiles[path] = e.target.result;
+          resolve({ path, name: entry.name });
+        };
+        reader.readAsText(file);
+      });
+    });
+  });
+  
+  const files = await Promise.all(filePromises);
+  
+  // Find HTML file
+  let htmlFile = files.find(f => f.name === 'index.html');
+  if (!htmlFile) {
+    htmlFile = files.find(f => f.name.endsWith('.html'));
+  }
+  
+  if (htmlFile) {
+    await processHTMLWithExternalFiles(projectFiles[htmlFile.path], htmlFile.path);
+  } else {
+    alert('❌ No HTML file found in folder!');
+  }
 }
 
 function analyzeColors() {

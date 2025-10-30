@@ -20,19 +20,28 @@
           <!-- Upload Panel -->
           <div class="panel">
             <h2>Upload</h2>
+            
             <div class="upload-area" id="uploadArea">
-              <div class="upload-icon">📄</div>
-              <h3 style="margin-bottom: 10px">Drop HTML File Here</h3>
+              <div class="upload-icon">📁</div>
+              <h3 style="margin-bottom: 10px">Drop HTML File or Folder Here</h3>
               <p style="color: #94a3b8; margin-bottom: 15px">
                 or click to browse
               </p>
-              <input type="file" id="fileInput" accept=".html" />
-              <button
-                class="btn"
-                onclick="document.getElementById('fileInput').click()"
-              >
-                Choose File
-              </button>
+              <input type="file" id="fileInput" accept=".html" style="display: none;" />
+              <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button
+                  class="btn"
+                  onclick="selectFile()"
+                >
+                  📄 Choose File
+                </button>
+                <button
+                  class="btn btn-secondary"
+                  onclick="selectFolder()"
+                >
+                  📁 Choose Folder
+                </button>
+              </div>
             </div>
 
             <div id="statsSection" style="display: none; margin-top: 20px">
@@ -176,7 +185,6 @@
               </div>
             </div>
 
-            <!-- Tab 3: Color Palettes -->
             <div class="tab-content" id="tab3">
               <h3 style="margin-bottom: 15px; color: #cbd5e1; font-size: 1em">
                 Popular Palettes
@@ -242,7 +250,6 @@
           </div>
         </div>
 
-        <!-- Preview Panel -->
         <div class="preview-container">
           <div class="preview-header">
             <h2 style="margin: 0; color: #a78bfa; font-size: 1.2em">
