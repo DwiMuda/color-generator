@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ultimate Color Studio Pro</title>
+    <style>
+      @import url("style.css");
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <button class="mode-toggle" onclick="toggleTheme()">🌓 Theme</button>
+        <h1>Color Generator</h1>
+      </div>
+
+      <div class="main-content">
+        <div class="sidebar">
+          <!-- Upload Panel -->
+          <div class="panel">
+            <h2>Upload</h2>
+            <div class="upload-area" id="uploadArea">
+              <div class="upload-icon">📄</div>
+              <h3 style="margin-bottom: 10px">Drop HTML File Here</h3>
+              <p style="color: #94a3b8; margin-bottom: 15px">
+                or click to browse
+              </p>
+              <input type="file" id="fileInput" accept=".html" />
+              <button
+                class="btn"
+                onclick="document.getElementById('fileInput').click()"
+              >
+                Choose File
+              </button>
+            </div>
+
+            <div id="statsSection" style="display: none; margin-top: 20px">
+              <div class="stats">
+                <div class="stat-card">
+                  <div class="stat-value" id="elementCount">0</div>
+                  <div class="stat-label">Elements</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="colorCount">0</div>
+                  <div class="stat-label">Unique Colors</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls Panel -->
+          <div class="panel" id="controlsPanel" style="display: none">
+            <h2>Controls</h2>
+
+            <div class="tabs">
+              <button class="tab active" onclick="switchTab(0)">Global</button>
+              <button class="tab" onclick="switchTab(1)">Elements</button>
+              <button class="tab" onclick="switchTab(2)">Gradient</button>
+              <button class="tab" onclick="switchTab(3)">Palette</button>
+            </div>
+
+
+            <div class="tab-content active" id="tab0">
+              <div class="color-input-group">
+                <label> Background Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="globalBg" value="#ffffff" />
+                  <input type="text" id="globalBgHex" placeholder="#ffffff" />
+                </div>
+              </div>
+
+              <div class="color-input-group">
+                <label> Text Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="globalText" value="#000000" />
+                  <input type="text" id="globalTextHex" placeholder="#000000" />
+                </div>
+              </div>
+
+              <div class="color-input-group">
+                <label> Border Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="globalBorder" value="#cccccc" />
+                  <input
+                    type="text"
+                    id="globalBorderHex"
+                    placeholder="#cccccc"
+                  />
+                </div>
+              </div>
+
+              <button
+                class="btn"
+                onclick="applyGlobalColors()"
+                style="width: 100%; margin-top: 10px"
+              >
+                 Apply Global Colors
+              </button>
+
+              <div class="quick-actions">
+                <button class="quick-btn" onclick="randomColors()">
+                  Random
+                </button>
+                <button class="quick-btn" onclick="invertColors()">
+                  Invert
+                </button>
+                <button class="quick-btn" onclick="grayscale()">
+                  Grayscale
+                </button>
+              </div>
+            </div>
+
+            <div class="tab-content" id="tab1">
+              <input
+                type="text"
+                class="search-box"
+                id="searchBox"
+                placeholder=" Search elements..."
+              />
+              <select
+                id="filterType"
+                style="width: 100%; margin-bottom: 15px"
+                onchange="filterElements()"
+              >
+                <option value="all">All Elements</option>
+                <option value="background">Background Only</option>
+                <option value="text">Text Only</option>
+                <option value="border">Border Only</option>
+              </select>
+              <div id="colorList"></div>
+            </div>
+
+            <div class="tab-content" id="tab2">
+              <div class="color-input-group">
+                <label> Gradient Start</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="gradStart" value="#8b5cf6" />
+                  <input type="text" id="gradStartHex" value="#8b5cf6" />
+                </div>
+              </div>
+
+              <div class="color-input-group">
+                <label> Gradient End</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="gradEnd" value="#ec4899" />
+                  <input type="text" id="gradEndHex" value="#ec4899" />
+                </div>
+              </div>
+
+              <div class="color-input-group">
+                <label> Angle</label>
+                <input
+                  type="number"
+                  id="gradAngle"
+                  value="135"
+                  min="0"
+                  max="360"
+                  style="width: 100%"
+                />
+              </div>
+
+              <div class="gradient-preview" id="gradientPreview"></div>
+
+              <button class="btn" onclick="applyGradient()" style="width: 100%">
+                Apply Gradient
+              </button>
+
+              <div class="quick-actions">
+                <button class="quick-btn" onclick="generateRandomGradient()">
+                  Random
+                </button>
+                <button class="quick-btn" onclick="reverseGradient()">
+                  Reverse
+                </button>
+              </div>
+            </div>
+
+            <!-- Tab 3: Color Palettes -->
+            <div class="tab-content" id="tab3">
+              <h3 style="margin-bottom: 15px; color: #cbd5e1; font-size: 1em">
+                Popular Palettes
+              </h3>
+              <div class="palette-grid" id="paletteSuggestions"></div>
+
+              <h3 style="margin: 20px 0 15px; color: #cbd5e1; font-size: 1em">
+                Color Harmony
+              </h3>
+              <div class="color-input-group">
+                <label>Base Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="harmonyBase" value="#8b5cf6" />
+                  <select id="harmonyType" style="flex: 1">
+                    <option value="complementary">Complementary</option>
+                    <option value="analogous">Analogous</option>
+                    <option value="triadic">Triadic</option>
+                    <option value="tetradic">Tetradic</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                class="btn btn-secondary"
+                onclick="generateHarmony()"
+                style="width: 100%; margin-top: 10px"
+              >
+                Generate Harmony
+              </button>
+              <div class="color-harmony" id="harmonyColors"></div>
+            </div>
+          </div>
+
+          <!-- Actions Panel -->
+          <div class="panel" id="actionsPanel" style="display: none">
+            <h2> Actions</h2>
+            <div class="toolbar">
+              <button class="btn btn-secondary" onclick="resetColors()">
+                Reset
+              </button>
+              <button class="btn btn-secondary" onclick="undoChange()">
+                ↩ Undo
+              </button>
+              <button class="btn" onclick="downloadHTML()">Download</button>
+              <button class="btn" onclick="copyColors()">Copy Colors</button>
+            </div>
+
+            <h3 style="margin: 20px 0 15px; color: #cbd5e1; font-size: 1em">
+              Export Options
+            </h3>
+            <div class="export-options">
+              <button class="btn btn-secondary" onclick="exportCSS()">
+                Export CSS
+              </button>
+              <button class="btn btn-secondary" onclick="exportJSON()">
+                Export JSON
+              </button>
+            </div>
+
+            <h3 style="margin: 20px 0 15px; color: #cbd5e1; font-size: 1em">
+              History
+            </h3>
+            <div id="historyList"></div>
+          </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-container">
+          <div class="preview-header">
+            <h2 style="margin: 0; color: #a78bfa; font-size: 1.2em">
+              Live Preview
+            </h2>
+            <div class="preview-controls">
+              <button class="preview-btn" onclick="refreshPreview()">
+                 Refresh
+              </button>
+              <button class="preview-btn" onclick="fullscreenPreview()">
+                ⛶ Fullscreen
+              </button>
+              <button class="preview-btn" onclick="toggleResponsive()">
+                 Responsive
+              </button>
+            </div>
+          </div>
+          <iframe id="previewFrame"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <script src="/script.js"></script>
+  </body>
+</html>
